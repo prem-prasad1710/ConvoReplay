@@ -4,25 +4,66 @@ import { getSessionUserDoc, unauthorized, misconfigured, serverError } from "@/l
 
 export const dynamic = "force-dynamic";
 
+/** Browser prefetch / opening this URL uses GET — explain POST-only. */
+export async function GET() {
+  return NextResponse.json(
+    {
+      error: {
+        code: "METHOD_NOT_ALLOWED",
+        message:
+          "Create order with POST only (use the Subscribe button). Razorpay checkout receives the key from that response.",
+      },
+    },
+    { status: 405, headers: { Allow: "POST, OPTIONS" } }
+  );
+}
+
 export async function POST() {
   try {
     const user = await getSessionUserDoc();
     if (!user) return unauthorized();
 
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const keyId = process.env.RAZORPAY_KEY_ID?.trim();
+    const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
     if (!keyId || !keySecret) {
       return misconfigured(
-        "Payments are not configured. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to the server environment."
+        "Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in Vercel → Settings → Environment Variables (Production), then redeploy. Same keys as Razorpay Dashboard → API Keys."
       );
+    }
+
+    const rzp = new Razorpay({ key_id: keyId, key_secret: keySecret });
+    const publishableKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim() || keyId;
+
+    const planId = process.env.RAZORPAY_PREMIUM_PLAN_ID?.trim();
+    if (planId) {
+      const totalCountRaw = process.env.RAZORPAY_SUBSCRIPTION_TOTAL_COUNT ?? "120";
+      const totalCount = Number(totalCountRaw);
+      if (!Number.isFinite(totalCount) || totalCount < 1) {
+        return misconfigured("Invalid RAZORPAY_SUBSCRIPTION_TOTAL_COUNT (positive integer, e.g. 120).");
+      }
+
+      const sub = await rzp.subscriptions.create({
+        plan_id: planId,
+        customer_notify: 1,
+        total_count: totalCount,
+        quantity: 1,
+        notes: {
+          userId: String(user._id),
+          email: user.email,
+        },
+      });
+
+      return NextResponse.json({
+        mode: "subscription" as const,
+        subscriptionId: sub.id,
+        keyId: publishableKey,
+      });
     }
 
     const amountPaise = Number(process.env.RAZORPAY_PREMIUM_AMOUNT_PAISE ?? "9900");
     if (!Number.isFinite(amountPaise) || amountPaise < 100) {
-      return misconfigured("Invalid RAZORPAY_PREMIUM_AMOUNT_PAISE.");
+      return misconfigured("Invalid RAZORPAY_PREMIUM_AMOUNT_PAISE (use paise, e.g. 9900 for ₹99).");
     }
-
-    const rzp = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
     const order = await rzp.orders.create({
       amount: amountPaise,
@@ -34,19 +75,21 @@ export async function POST() {
       },
     });
 
-    const pub = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-    if (!pub) {
-      return misconfigured("Add NEXT_PUBLIC_RAZORPAY_KEY_ID (same as Key Id from Razorpay dashboard) for checkout.");
-    }
-
     return NextResponse.json({
+      mode: "order" as const,
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: pub,
+      keyId: publishableKey,
     });
   } catch (e) {
     console.error(e);
-    return serverError("Could not create payment order.");
+    const msg = e instanceof Error ? e.message : "Could not create payment order.";
+    if (/bad request|invalid/i.test(msg)) {
+      return misconfigured(
+        `Razorpay rejected the request: ${msg}. Check Key Id / Key Secret (test vs live match) in the dashboard.`
+      );
+    }
+    return serverError(msg);
   }
 }

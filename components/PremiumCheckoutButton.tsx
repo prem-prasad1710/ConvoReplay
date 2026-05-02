@@ -37,6 +37,63 @@ export function PremiumCheckoutButton({ className, children, variant = "primary"
       await loadRazorpayScript();
 
       const keyId = data.keyId as string;
+      const mode = (data.mode as string | undefined) ?? "order";
+
+      type HandlerResponse =
+        | {
+            razorpay_payment_id: string;
+            razorpay_order_id: string;
+            razorpay_signature: string;
+          }
+        | {
+            razorpay_payment_id: string;
+            razorpay_subscription_id: string;
+            razorpay_signature: string;
+          };
+
+      const handler = async (response: HandlerResponse) => {
+        const v = await fetch("/api/payments/razorpay/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(response),
+        });
+        const j = await v.json().catch(() => ({}));
+        if (!v.ok) {
+          setErr(j?.error?.message ?? "Payment verification failed.");
+          setBusy(false);
+          return;
+        }
+        window.location.href = "/app?upgraded=1";
+      };
+
+      const commonModal = {
+        modal: {
+          ondismiss: () => setBusy(false),
+        },
+      };
+
+      if (mode === "subscription") {
+        const subscriptionId = data.subscriptionId as string;
+        const options = {
+          key: keyId,
+          subscription_id: subscriptionId,
+          name: "Conv Replay",
+          description: "Premium subscription",
+          theme: { color: "#c45cff" },
+          handler,
+          ...commonModal,
+        };
+        const Rzp = window.Razorpay;
+        if (!Rzp) {
+          setErr("Razorpay script did not load.");
+          setBusy(false);
+          return;
+        }
+        const rz = new Rzp(options);
+        rz.open();
+        return;
+      }
+
       const orderId = data.orderId as string;
       const amount = data.amount as number;
       const currency = (data.currency as string) ?? "INR";
@@ -49,29 +106,9 @@ export function PremiumCheckoutButton({ className, children, variant = "primary"
         name: "Conv Replay",
         description: "Premium — 30 days unlimited analyses",
         theme: { color: "#c45cff" },
-        handler: async (response: {
-          razorpay_payment_id: string;
-          razorpay_order_id: string;
-          razorpay_signature: string;
-        }) => {
-          const v = await fetch("/api/payments/razorpay/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(response),
-          });
-          const j = await v.json().catch(() => ({}));
-          if (!v.ok) {
-            setErr(j?.error?.message ?? "Payment verification failed.");
-            setBusy(false);
-            return;
-          }
-          window.location.href = "/app?upgraded=1";
-        },
-        modal: {
-          ondismiss: () => setBusy(false),
-        },
+        handler,
+        ...commonModal,
       };
-
       const Rzp = window.Razorpay;
       if (!Rzp) {
         setErr("Razorpay script did not load.");

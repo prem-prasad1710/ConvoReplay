@@ -7,6 +7,8 @@ const userSchema = new Schema(
     plan: { type: String, enum: ["free", "premium"], default: "free" },
     /** Set when user pays via Razorpay; after this date, access falls back to free rules. */
     premiumUntil: { type: Date, default: null },
+    /** Present while an active Razorpay subscription exists (used by webhooks / support). */
+    razorpaySubscriptionId: { type: String, default: null },
     credits: { type: Number, default: 0 },
     /** YYYY-MM for rolling monthly free quota */
     usageMonth: { type: String, default: "" },

@@ -1,6 +1,5 @@
 "use client";
 
-import { isCompleteAnalysis } from "@/lib/analysis-guard";
 import type { AnalysisResult, NormalizedTurn } from "@/lib/types/analysis";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -40,33 +39,50 @@ const MISTAKE_LABELS: Record<string, string> = {
   miscommunication: "Miscommunication",
 };
 
-function SeverityBar({ n }: { n: number }) {
+function SeverityBar({ n }: { n: unknown }) {
+  const level = clampSeverity(n);
   return (
     <div className="flex items-center gap-1.5">
-      {[1,2,3,4,5].map((i) => (
+      {[1, 2, 3, 4, 5].map((i) => (
         <div
           key={i}
           className="w-5 h-1.5 rounded-full"
           style={{
-            background: i <= n
-              ? `hsl(${340 - i * 20}, 90%, 65%)`
-              : "rgba(255,255,255,0.08)",
+            background: i <= level ? `hsl(${340 - i * 20}, 90%, 65%)` : "rgba(255,255,255,0.08)",
           }}
         />
       ))}
-      <span className={`text-xs font-semibold sev-${n}`}>{n}/5</span>
+      <span className={`text-xs font-semibold sev-${level}`}>{level}/5</span>
     </div>
   );
 }
 
-function ConfidenceBar({ pct }: { pct: number }) {
-  const color = pct >= 0.7 ? "var(--accent2)" : pct >= 0.4 ? "var(--warn)" : "var(--muted)";
+function asNum(v: unknown, fallback = 0): number {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    const n = parseFloat(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return fallback;
+}
+
+/** Groq JSON sometimes omits or mistypes severity — avoid NaN / crash in styles */
+function clampSeverity(n: unknown): number {
+  const x = Math.round(asNum(n, 3));
+  const v = Number.isFinite(x) ? x : 3;
+  return Math.min(5, Math.max(1, v));
+}
+
+function ConfidenceBar({ pct }: { pct: unknown }) {
+  const p = typeof pct === "number" && Number.isFinite(pct) ? pct : asNum(pct, 0);
+  const safe = Math.min(1, Math.max(0, p));
+  const color = safe >= 0.7 ? "var(--accent2)" : safe >= 0.4 ? "var(--warn)" : "var(--muted)";
   return (
     <div className="flex items-center gap-2">
       <div className="progress-bar flex-1" style={{ maxWidth: 100 }}>
-        <div className="progress-fill" style={{ width: `${pct * 100}%`, background: color }} />
+        <div className="progress-fill" style={{ width: `${safe * 100}%`, background: color }} />
       </div>
-      <span className="text-xs font-mono" style={{ color }}>{Math.round(pct * 100)}%</span>
+      <span className="text-xs font-mono" style={{ color }}>{Math.round(safe * 100)}%</span>
     </div>
   );
 }
@@ -118,13 +134,19 @@ export default function ConversationDetailPage() {
 
   const mistakeByTurn = useMemo(() => {
     const m = new Map<number, NonNullable<AnalysisResult["stageOne"]["user_mistakes"]>[number]>();
-    conv?.analysis?.stageOne.user_mistakes?.forEach((u) => m.set(u.turn_index, u));
+    const list = Array.isArray(conv?.analysis?.stageOne?.user_mistakes)
+      ? conv!.analysis!.stageOne.user_mistakes
+      : [];
+    list.forEach((u) => m.set(u.turn_index, u));
     return m;
   }, [conv]);
 
   const enrichedByTurn = useMemo(() => {
     const m = new Map<number, NonNullable<AnalysisResult["stageOne"]["turns_enriched"]>[number]>();
-    conv?.analysis?.stageOne.turns_enriched?.forEach((t) => m.set(t.i, t));
+    const list = Array.isArray(conv?.analysis?.stageOne?.turns_enriched)
+      ? conv!.analysis!.stageOne.turns_enriched
+      : [];
+    list.forEach((t) => m.set(t.i, t));
     return m;
   }, [conv]);
 
@@ -174,29 +196,13 @@ export default function ConversationDetailPage() {
     );
   }
 
-  if (!isCompleteAnalysis(conv.analysis)) {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-16 space-y-6">
-        <Link href="/app" className="text-sm text-[var(--muted)] hover:text-[var(--accent2)]">
-          ← Dashboard
-        </Link>
-        <div className="glass space-y-4 border border-[var(--warn)]/30 p-8 text-center sm:text-left">
-          <p className="text-3xl">📄</p>
-          <h1 className="text-xl font-bold text-[var(--warn)]">Analysis data incomplete</h1>
-          <p className="text-sm text-[var(--muted)] leading-relaxed">
-            The stored result is missing some sections (common if the AI returned partial JSON). Run a new analysis, or
-            delete this conversation and try again.
-          </p>
-          <Link href="/app/new" className="btn btn-primary btn-sm inline-flex">
-            New analysis →
-          </Link>
-        </div>
-      </main>
-    );
-  }
-
   const a = conv.analysis;
-  const turns = conv.normalizedTurns ?? [];
+  const turns: NormalizedTurn[] = Array.isArray(conv.normalizedTurns) ? conv.normalizedTurns : [];
+  const taxonomyHits = Array.isArray(a.stageOne?.taxonomy_hits) ? a.stageOne.taxonomy_hits : [];
+  const intentRows = Array.isArray(a.stageOne?.their_likely_meaning) ? a.stageOne.their_likely_meaning : [];
+  const replayTurns = Array.isArray(a.stageTwo?.replay_mode?.turns) ? a.stageTwo.replay_mode.turns : [];
+  const futureLines = Array.isArray(a.stageTwo?.future_playbook) ? a.stageTwo.future_playbook : [];
+  const pd = a.stageOne?.power_dynamics;
 
   return (
     <>
@@ -241,17 +247,19 @@ export default function ConversationDetailPage() {
             <span className="text-[var(--accent2)] font-mono text-xs uppercase tracking-wider font-semibold">Coach summary</span>
             {conv.toneMode === "brutal" ? <span className="text-xs">🔥</span> : <span className="text-xs">🌿</span>}
           </div>
-          <p className="leading-relaxed text-[var(--text)] text-[15px]">{a.stageTwo.coach_summary}</p>
+          <p className="leading-relaxed text-[var(--text)] text-[15px]">{a.stageTwo?.coach_summary ?? "—"}</p>
         </section>
 
         {/* Quick stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 anim-fade-in delay-200">
           <div className="glass p-4 text-center space-y-1">
-            <p className="text-2xl font-bold text-[var(--danger)]">{a.stageOne.user_mistakes?.length ?? 0}</p>
+            <p className="text-2xl font-bold text-[var(--danger)]">
+              {Array.isArray(a.stageOne?.user_mistakes) ? a.stageOne.user_mistakes.length : 0}
+            </p>
             <p className="text-xs text-[var(--muted)]">Mistakes found</p>
           </div>
           <div className="glass p-4 text-center space-y-1">
-            <p className="text-2xl font-bold text-[var(--accent2)]">{a.stageOne.their_likely_meaning?.length ?? 0}</p>
+            <p className="text-2xl font-bold text-[var(--accent2)]">{intentRows.length}</p>
             <p className="text-xs text-[var(--muted)]">Intent decoded</p>
           </div>
           <div className="glass p-4 text-center space-y-1">
@@ -267,9 +275,9 @@ export default function ConversationDetailPage() {
         </div>
 
         {/* Mistake type chips */}
-        {(a.stageOne.taxonomy_hits ?? []).length > 0 && (
+        {taxonomyHits.length > 0 && (
           <div className="flex flex-wrap gap-2 anim-fade-in delay-200">
-            {a.stageOne.taxonomy_hits.map((t) => (
+            {taxonomyHits.map((t) => (
               <span key={t} className={`chip mistake-${t}`}>
                 {MISTAKE_LABELS[t] ?? t}
               </span>
@@ -351,20 +359,22 @@ export default function ConversationDetailPage() {
           {tab === "intent" && (
             <div className="space-y-4">
               <h2 className="font-semibold text-sm text-[var(--muted)] uppercase tracking-wide">What they likely meant</h2>
-              {(a.stageOne.their_likely_meaning ?? []).length === 0 ? (
+              {intentRows.length === 0 ? (
                 <div className="glass p-8 text-center text-[var(--muted)] text-sm">No intent analysis available for this transcript.</div>
               ) : (
                 <ul className="space-y-4">
-                  {a.stageOne.their_likely_meaning.map((row, i) => (
+                  {intentRows.map((row, i) => {
+                    const signals = Array.isArray(row.signals) ? row.signals : [];
+                    return (
                     <li key={i} className="glass rounded-xl p-5 space-y-3 anim-fade-in" style={{ animationDelay: `${i * 0.07}s` }}>
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <span className="font-mono text-xs text-[var(--muted)]">Turn #{row.turn_index}</span>
                         <ConfidenceBar pct={row.confidence} />
                       </div>
-                      <p className="font-medium leading-snug">{row.hypothesis}</p>
-                      {(row.signals ?? []).length > 0 && (
+                      <p className="font-medium leading-snug">{row.hypothesis ?? "—"}</p>
+                      {signals.length > 0 && (
                         <ul className="space-y-1">
-                          {row.signals.map((s) => (
+                          {signals.map((s) => (
                             <li key={s} className="text-sm text-[var(--muted)] flex items-start gap-2">
                               <span className="text-[var(--accent2)] mt-0.5">›</span> {s}
                             </li>
@@ -372,7 +382,8 @@ export default function ConversationDetailPage() {
                         </ul>
                       )}
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -382,21 +393,21 @@ export default function ConversationDetailPage() {
             <div className="space-y-5">
               <h2 className="font-semibold text-sm text-[var(--muted)] uppercase tracking-wide">Power dynamics</h2>
               <div className="glass p-6">
-                <p className="leading-relaxed">{a.stageOne.power_dynamics.summary}</p>
+                <p className="leading-relaxed">{pd?.summary ?? "—"}</p>
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="glass p-5 space-y-2 border border-[var(--accent)]/20">
                   <p className="text-xs font-mono text-[var(--accent)] uppercase tracking-wider font-semibold">Your frame</p>
-                  <p className="text-sm leading-relaxed">{a.stageOne.power_dynamics.user_frame}</p>
+                  <p className="text-sm leading-relaxed">{pd?.user_frame ?? "—"}</p>
                 </div>
                 <div className="glass p-5 space-y-2 border border-[var(--accent2)]/20">
                   <p className="text-xs font-mono text-[var(--accent2)] uppercase tracking-wider font-semibold">Their frame</p>
-                  <p className="text-sm leading-relaxed">{a.stageOne.power_dynamics.other_frame}</p>
+                  <p className="text-sm leading-relaxed">{pd?.other_frame ?? "—"}</p>
                 </div>
               </div>
               <div className="glass p-5 border border-[var(--warn)]/25 rounded-xl">
                 <p className="text-xs font-mono text-[var(--warn)] uppercase tracking-wider font-semibold mb-2">Imbalance</p>
-                <p className="text-sm leading-relaxed">{a.stageOne.power_dynamics.imbalance}</p>
+                <p className="text-sm leading-relaxed">{pd?.imbalance ?? "—"}</p>
               </div>
             </div>
           )}
@@ -423,10 +434,10 @@ export default function ConversationDetailPage() {
                           {label}
                         </p>
                       </div>
-                      <CopyButton text={a.stageTwo.better_replies[k]} />
+                      <CopyButton text={String(a.stageTwo?.better_replies?.[k] ?? "")} />
                     </div>
                     <p className="text-sm leading-relaxed text-[var(--text)]">
-                      {a.stageTwo.better_replies[k]}
+                      {a.stageTwo?.better_replies?.[k] ?? "—"}
                     </p>
                   </div>
                 ))}
@@ -441,10 +452,10 @@ export default function ConversationDetailPage() {
                 <span className="chip text-[11px] py-0.5">Hypothetical</span>
               </div>
               <div className="glass rounded-xl p-4 text-xs text-[var(--muted)] border border-[var(--warn)]/20">
-                ℹ {a.stageTwo.replay_mode.disclaimer}
+                ℹ {a.stageTwo?.replay_mode?.disclaimer ?? "—"}
               </div>
               <ul className="space-y-3">
-                {a.stageTwo.replay_mode.turns.map((t, i) => (
+                {replayTurns.map((t, i) => (
                   <li
                     key={i}
                     className={`max-w-2xl ${t.speaker === "me" ? "ml-auto" : ""} anim-fade-in`}
@@ -467,7 +478,7 @@ export default function ConversationDetailPage() {
               <h2 className="font-semibold text-sm text-[var(--muted)] uppercase tracking-wide">Future playbook</h2>
               <p className="text-sm text-[var(--muted)]">Three things to do differently in similar situations.</p>
               <ol className="space-y-4">
-                {(a.stageTwo.future_playbook ?? []).map((line, i) => (
+                {(futureLines).map((line, i) => (
                   <li key={i} className="glass rounded-xl p-5 flex gap-4 items-start anim-fade-in" style={{ animationDelay: `${i * 0.1}s` }}>
                     <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold"
                       style={{ background: `linear-gradient(135deg, var(--accent), var(--accent2))` }}>

@@ -18,8 +18,11 @@ import {
 /** Groq OpenAI-compatible endpoint */
 const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 
-/** Strong JSON + reasoning for analysis */
-const DEFAULT_TEXT_MODEL = "llama-3.3-70b-versatile";
+/**
+ * Default uses Groq’s fast 8B model — separate daily token pool from 70B on free tier and cheaper per call.
+ * Override with GROQ_MODEL=llama-3.3-70b-versatile when you need maximum reasoning (and quota allows).
+ */
+const DEFAULT_TEXT_MODEL = "llama-3.1-8b-instant";
 /** Vision / screenshot OCR — multimodal on Groq */
 const DEFAULT_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 

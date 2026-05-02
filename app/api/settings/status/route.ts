@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUserDoc, unauthorized } from "@/lib/api-helpers";
 import { resolveGroqApiKey } from "@/lib/groq-config";
+import { getResolvedMongoDbName } from "@/lib/mongodb";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,8 @@ export async function GET() {
 
   return NextResponse.json({
     mongoConfigured: mongoOk,
+    /** Atlas database name to open in Data Explorer (after first successful write). */
+    mongoDbName: mongoOk ? getResolvedMongoDbName() : null,
     groqConfigured: groq.ok,
     groqIssue: groq.ok ? null : groq.issue,
     authSecretWeak:

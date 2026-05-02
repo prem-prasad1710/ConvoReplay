@@ -39,7 +39,7 @@ export default function InsightsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const max = patterns[0]?.count ?? 1;
+  const max = Math.max(1, ...patterns.map((p) => p.count));
 
   return (
     <>

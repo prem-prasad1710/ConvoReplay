@@ -65,13 +65,50 @@ export default function SettingsPage() {
         </section>
 
         <section className="glass space-y-4 p-6 anim-fade-in delay-200">
-          <h2 className="font-semibold text-[var(--accent2)]">MongoDB</h2>
+          <h2 className="font-semibold text-[var(--accent2)]">MongoDB / Atlas &ldquo;no data&rdquo;</h2>
           <p className="text-sm text-[var(--muted)] leading-relaxed">
-            Default local URI:{" "}
+            Atlas only creates a database after the <strong className="text-[var(--text)]">first successful write</strong>.
+            If Data Explorer shows only <code className="font-mono text-xs">admin</code> and <code className="font-mono text-xs">local</code>,
+            nothing has been saved yet or the app is not using this cluster.
+          </p>
+          <ul className="list-disc space-y-2 pl-5 text-sm text-[var(--muted)] leading-relaxed">
+            <li>
+              Put the database name in the URI path (before <code className="font-mono text-xs">?</code>), e.g.{" "}
+              <code className="rounded bg-white/10 px-1 font-mono text-xs break-all">
+                ...mongodb.net/convoreplay?retryWrites=true&amp;w=majority
+              </code>
+              . If the path is omitted, this app now defaults to the <code className="font-mono text-xs">convoreplay</code> database.
+            </li>
+            <li>
+              After you <strong className="text-[var(--text)]">register</strong> or run an analysis, open that database in Atlas:
+              collections are <code className="font-mono text-xs">users</code> and <code className="font-mono text-xs">conversations</code> (Mongoose pluralization).
+            </li>
+            <li>
+              <strong className="text-[var(--text)]">Network Access:</strong> in Atlas, allow your IP (or{" "}
+              <code className="font-mono text-xs">0.0.0.0/0</code> for testing). Without it, the driver cannot connect.
+            </li>
+            <li>
+              <strong className="text-[var(--text)]">Password in URI:</strong> special characters must be{" "}
+              <a
+                href="https://www.mongodb.com/docs/manual/reference/connection-string/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--accent2)] underline"
+              >
+                URL-encoded
+              </a>
+              .
+            </li>
+            <li>
+              The dashboard status API returns <code className="font-mono text-xs">mongoDbName</code> so you know which database name to open for this deployment.
+            </li>
+          </ul>
+          <p className="text-sm text-[var(--muted)] leading-relaxed">
+            Local default:{" "}
             <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs">
               mongodb://127.0.0.1:27017/convoreplay
             </code>
-            . Start MongoDB locally or set <code className="font-mono text-xs">MONGODB_URI</code> to Atlas.
+            .
           </p>
         </section>
 

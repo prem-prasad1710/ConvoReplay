@@ -28,6 +28,7 @@ type Me = {
 
 type EnvStatus = {
   mongoConfigured: boolean;
+  mongoDbName: string | null;
   groqConfigured: boolean;
   groqIssue: "missing" | "placeholder" | null;
   authSecretWeak: boolean;
@@ -210,7 +211,7 @@ export default function DashboardPage() {
               <p className="text-3xl font-bold text-[var(--accent2)]">
                 {me.user.plan === "premium"
                   ? "∞"
-                  : `${me.user.usage.freeAnalysesRemaining ?? 0}/${me.user.usage.freeLimit ?? 3}`}
+                  : `${me.user.usage?.freeAnalysesRemaining ?? 0}/${me.user.usage?.freeLimit ?? 3}`}
               </p>
               <p className="text-xs text-[var(--muted)]">this month</p>
             </div>

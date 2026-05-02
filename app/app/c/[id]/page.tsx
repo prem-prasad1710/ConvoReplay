@@ -1,5 +1,6 @@
 "use client";
 
+import { isCompleteAnalysis } from "@/lib/analysis-guard";
 import type { AnalysisResult, NormalizedTurn } from "@/lib/types/analysis";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -91,7 +92,9 @@ function CopyButton({ text }: { text: string }) {
 export default function ConversationDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params.id as string;
+  const rawId = params?.id;
+  const id =
+    typeof rawId === "string" ? rawId : Array.isArray(rawId) ? (rawId[0] ?? "") : "";
   const [conv, setConv] = useState<ConvDoc | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("breakdown");
@@ -162,11 +165,32 @@ export default function ConversationDetailPage() {
     );
   }
 
-  if (!conv.analysis || conv.status !== "ready") {
+  if (conv.status !== "ready" || !conv.analysis) {
     return (
       <main className="flex min-h-screen items-center justify-center flex-col gap-4">
         <div className="spinner" style={{ width: 32, height: 32, borderWidth: 3 }} />
         <p className="text-[var(--muted)]">Still processing… refresh in a moment.</p>
+      </main>
+    );
+  }
+
+  if (!isCompleteAnalysis(conv.analysis)) {
+    return (
+      <main className="mx-auto max-w-3xl px-6 py-16 space-y-6">
+        <Link href="/app" className="text-sm text-[var(--muted)] hover:text-[var(--accent2)]">
+          ← Dashboard
+        </Link>
+        <div className="glass space-y-4 border border-[var(--warn)]/30 p-8 text-center sm:text-left">
+          <p className="text-3xl">📄</p>
+          <h1 className="text-xl font-bold text-[var(--warn)]">Analysis data incomplete</h1>
+          <p className="text-sm text-[var(--muted)] leading-relaxed">
+            The stored result is missing some sections (common if the AI returned partial JSON). Run a new analysis, or
+            delete this conversation and try again.
+          </p>
+          <Link href="/app/new" className="btn btn-primary btn-sm inline-flex">
+            New analysis →
+          </Link>
+        </div>
       </main>
     );
   }
@@ -304,7 +328,7 @@ export default function ConversationDetailPage() {
                         <div className="mt-3 space-y-2 border-t border-white/6 pt-3">
                           <p className="text-sm text-[var(--muted)]">{mistake.line_explanation}</p>
                           <div className="flex flex-wrap gap-1">
-                            {mistake.types.map((ty) => (
+                            {(mistake.types ?? []).map((ty) => (
                               <span key={ty} className={`chip mistake-${ty} text-xs`}>
                                 {MISTAKE_LABELS[ty] ?? ty}
                               </span>

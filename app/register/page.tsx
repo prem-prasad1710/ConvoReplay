@@ -126,7 +126,7 @@ export default function RegisterPage() {
 
             {/* Perks */}
             <div className="grid grid-cols-3 gap-2 text-center">
-              {["3 free/mo", "2 credits", "All features"].map((p) => (
+              {["1 free/mo", "Razorpay upgrade", "All context modes"].map((p) => (
                 <div key={p} className="glass rounded-xl py-2 px-1">
                   <p className="text-xs text-[var(--accent2)] font-semibold">{p}</p>
                 </div>

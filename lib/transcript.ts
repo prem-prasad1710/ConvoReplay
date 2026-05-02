@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { bracketTimesInText } from "@/lib/format-timestamps";
 import type { NormalizedTurn } from "@/lib/types/analysis";
 
 const MAX_CHARS = 48_000;
@@ -41,11 +42,11 @@ export function normalizeTranscript(raw: string): {
       }
     }
 
-    turns.push({ i: turns.length, speaker, text: content });
+    turns.push({ i: turns.length, speaker, text: bracketTimesInText(content) });
   }
 
   if (turns.length === 0) {
-    turns.push({ i: 0, speaker: "unknown", text: text.slice(0, 5000) });
+    turns.push({ i: 0, speaker: "unknown", text: bracketTimesInText(text.slice(0, 5000)) });
   }
 
   return { turns, warnings };

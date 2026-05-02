@@ -22,7 +22,9 @@ export function badRequest(message: string, code = "BAD_REQUEST") {
   return NextResponse.json({ error: { code, message } }, { status: 400 });
 }
 
-export function paymentRequired(message = "Monthly free analyses used. Upgrade or add credits.") {
+export function paymentRequired(
+  message = "Your free analysis for this month is used. Upgrade to Premium on the Pricing page (Razorpay)."
+) {
   return NextResponse.json(
     { error: { code: "INSUFFICIENT_CREDITS", message } },
     { status: 402 }

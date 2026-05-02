@@ -58,7 +58,7 @@ export default function HomePage() {
           </div>
 
           <p className="anim-fade-in delay-400 text-sm text-[var(--muted)]">
-            3 free analyses / month · No credit card required
+            1 free analysis / month · No credit card required
           </p>
 
           {/* Demo card */}

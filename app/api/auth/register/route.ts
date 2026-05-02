@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     const user = await User.create({
       email: parsed.data.email.toLowerCase(),
       passwordHash,
-      credits: 2,
+      credits: 0,
     });
 
     const token = await signSession({ sub: user.id, email: user.email });

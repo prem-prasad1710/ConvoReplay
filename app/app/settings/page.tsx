@@ -1,8 +1,24 @@
 "use client";
 
+import { PremiumCheckoutButton } from "@/components/PremiumCheckoutButton";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function SettingsPage() {
+  const [plan, setPlan] = useState<string | null>(null);
+
+  useEffect(() => {
+    let c = false;
+    (async () => {
+      const res = await fetch("/api/me");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!c) setPlan(data.user?.plan ?? null);
+    })();
+    return () => {
+      c = true;
+    };
+  }, []);
   return (
     <>
       <div className="bg-mesh pointer-events-none opacity-60" />
@@ -110,6 +126,23 @@ export default function SettingsPage() {
             </code>
             .
           </p>
+        </section>
+
+        <section className="glass space-y-4 p-6 anim-fade-in delay-250">
+          <h2 className="font-semibold text-[var(--accent2)]">Razorpay (Premium)</h2>
+          <p className="text-sm text-[var(--muted)] leading-relaxed">
+            Set <code className="font-mono text-xs">RAZORPAY_KEY_ID</code>, <code className="font-mono text-xs">RAZORPAY_KEY_SECRET</code> (server) and{" "}
+            <code className="font-mono text-xs">NEXT_PUBLIC_RAZORPAY_KEY_ID</code> (browser checkout — same as Key Id in dashboard). Optional:{" "}
+            <code className="font-mono text-xs">RAZORPAY_PREMIUM_AMOUNT_PAISE=9900</code> for ₹99. Test mode keys work in development.
+          </p>
+          {plan === "free" ? (
+            <div className="space-y-3">
+              <p className="text-sm text-[var(--text)]">You&apos;re on the free tier (1 analysis / month). Upgrade for 30 days unlimited.</p>
+              <PremiumCheckoutButton className="btn btn-primary w-full sm:w-auto" />
+            </div>
+          ) : plan === "premium" ? (
+            <p className="text-sm text-[var(--success)]">Premium is active on this account. Renew from the Pricing page when your period ends.</p>
+          ) : null}
         </section>
 
         <section className="glass space-y-4 p-6 anim-fade-in delay-300">

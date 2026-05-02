@@ -1,6 +1,6 @@
 import type { UserDoc } from "@/models/User";
 
-export const FREE_ANALYSES_PER_MONTH = 3;
+export const FREE_ANALYSES_PER_MONTH = 1;
 
 function currentMonth(): string {
   const d = new Date();
@@ -10,6 +10,15 @@ function currentMonth(): string {
 export type QuotaResult =
   | { ok: true; usedCredit: boolean }
   | { ok: false; reason: "no_quota" };
+
+/** Premium access from Razorpay; expired subscriptions behave as free for quotas. */
+export function effectivePlan(user: UserDoc): "free" | "premium" {
+  if (user.plan !== "premium") return "free";
+  const until = user.premiumUntil as Date | undefined | null;
+  if (until == null) return "premium";
+  const end = until instanceof Date ? until : new Date(String(until));
+  return end.getTime() > Date.now() ? "premium" : "free";
+}
 
 export function refreshMonthlyUsage(user: UserDoc): void {
   const m = currentMonth();
@@ -21,7 +30,7 @@ export function refreshMonthlyUsage(user: UserDoc): void {
 
 export function canRunAnalysis(user: UserDoc): QuotaResult {
   refreshMonthlyUsage(user);
-  if (user.plan === "premium") {
+  if (effectivePlan(user) === "premium") {
     return { ok: true, usedCredit: false };
   }
   if (user.freeAnalysesUsed < FREE_ANALYSES_PER_MONTH) {
@@ -35,7 +44,7 @@ export function canRunAnalysis(user: UserDoc): QuotaResult {
 
 export function consumeQuota(user: UserDoc, q: QuotaResult): void {
   if (!q.ok) return;
-  if (user.plan === "premium") return;
+  if (effectivePlan(user) === "premium") return;
   if (q.usedCredit) {
     user.credits -= 1;
     return;

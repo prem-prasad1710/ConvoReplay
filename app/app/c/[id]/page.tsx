@@ -1,5 +1,6 @@
 "use client";
 
+import { bracketTimesInText } from "@/lib/format-timestamps";
 import type { AnalysisResult, NormalizedTurn } from "@/lib/types/analysis";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -317,7 +318,11 @@ export default function ConversationDetailPage() {
                   const enriched = enrichedByTurn.get(t.i);
                   const cls = t.speaker === "me" ? "turn-me" : t.speaker === "other" ? "turn-other" : "turn-unknown";
                   return (
-                    <li key={t.i} className={`glass rounded-xl px-5 py-4 ${cls} anim-fade-in`} style={{ animationDelay: `${t.i * 0.04}s` }}>
+                    <li
+                      key={t.i}
+                      className={`transcript-line glass rounded-xl px-5 py-4 ${cls} anim-fade-in`}
+                      style={{ animationDelay: `${Math.min(t.i, 20) * 0.04}s` }}
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2">
                           <span className={`font-mono text-xs uppercase font-semibold ${t.speaker === "me" ? "text-[var(--accent)]" : t.speaker === "other" ? "text-[var(--accent2)]" : "text-[var(--muted)]"}`}>
@@ -330,7 +335,7 @@ export default function ConversationDetailPage() {
                         {mistake && <SeverityBar n={mistake.severity} />}
                       </div>
 
-                      <p className="text-sm leading-relaxed">{t.text}</p>
+                      <p className="text-sm leading-relaxed transcript-message">{bracketTimesInText(t.text)}</p>
 
                       {mistake && (
                         <div className="mt-3 space-y-2 border-t border-white/6 pt-3">
@@ -465,7 +470,7 @@ export default function ConversationDetailPage() {
                       <span className={`font-mono text-[10px] uppercase font-semibold ${t.speaker === "me" ? "text-[var(--accent)]" : "text-[var(--accent2)]"}`}>
                         {t.speaker}
                       </span>
-                      <p className="text-sm leading-relaxed">{t.text}</p>
+                      <p className="text-sm leading-relaxed transcript-message">{bracketTimesInText(t.text)}</p>
                     </div>
                   </li>
                 ))}

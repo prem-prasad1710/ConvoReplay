@@ -5,6 +5,8 @@ const userSchema = new Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
     plan: { type: String, enum: ["free", "premium"], default: "free" },
+    /** Set when user pays via Razorpay; after this date, access falls back to free rules. */
+    premiumUntil: { type: Date, default: null },
     credits: { type: Number, default: 0 },
     /** YYYY-MM for rolling monthly free quota */
     usageMonth: { type: String, default: "" },

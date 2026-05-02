@@ -31,6 +31,7 @@ type EnvStatus = {
   mongoDbName: string | null;
   groqConfigured: boolean;
   groqIssue: "missing" | "placeholder" | null;
+  razorpayConfigured?: boolean;
   authSecretWeak: boolean;
 };
 
@@ -141,7 +142,7 @@ export default function DashboardPage() {
         </header>
 
         {/* Env warnings */}
-        {envStatus && (!envStatus.groqConfigured || envStatus.authSecretWeak || !envStatus.mongoConfigured) ? (
+        {envStatus && (!envStatus.groqConfigured || envStatus.authSecretWeak || !envStatus.mongoConfigured || envStatus.razorpayConfigured === false) ? (
           <div className="space-y-3 anim-fade-in">
             {!envStatus.groqConfigured ? (
               <div className="glass rounded-xl border border-[var(--danger)]/35 bg-[var(--danger)]/8 px-5 py-4 text-sm leading-relaxed">
@@ -164,6 +165,12 @@ export default function DashboardPage() {
             {!envStatus.mongoConfigured ? (
               <div className="glass rounded-xl border border-[var(--danger)]/35 px-5 py-3 text-sm text-[var(--danger)]">
                 MONGODB_URI is missing — database calls will fail.
+              </div>
+            ) : null}
+            {envStatus.razorpayConfigured === false ? (
+              <div className="glass rounded-xl border border-[var(--warn)]/35 px-5 py-3 text-sm text-[var(--warn)]">
+                Razorpay is not configured — add RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and NEXT_PUBLIC_RAZORPAY_KEY_ID to enable
+                paid upgrades. See Setup &amp; help.
               </div>
             ) : null}
           </div>
@@ -211,7 +218,7 @@ export default function DashboardPage() {
               <p className="text-3xl font-bold text-[var(--accent2)]">
                 {me.user.plan === "premium"
                   ? "∞"
-                  : `${me.user.usage?.freeAnalysesRemaining ?? 0}/${me.user.usage?.freeLimit ?? 3}`}
+                  : `${me.user.usage?.freeAnalysesRemaining ?? 0}/${me.user.usage?.freeLimit ?? 1}`}
               </p>
               <p className="text-xs text-[var(--muted)]">this month</p>
             </div>

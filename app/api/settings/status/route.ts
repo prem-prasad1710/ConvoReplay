@@ -14,6 +14,13 @@ export async function GET() {
 
   const groq = resolveGroqApiKey();
   const mongoOk = typeof process.env.MONGODB_URI === "string" && process.env.MONGODB_URI.length > 0;
+  const razorpayOk =
+    typeof process.env.RAZORPAY_KEY_ID === "string" &&
+    process.env.RAZORPAY_KEY_ID.length > 0 &&
+    typeof process.env.RAZORPAY_KEY_SECRET === "string" &&
+    process.env.RAZORPAY_KEY_SECRET.length > 0 &&
+    typeof process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID === "string" &&
+    process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID.length > 0;
 
   return NextResponse.json({
     mongoConfigured: mongoOk,
@@ -21,6 +28,7 @@ export async function GET() {
     mongoDbName: mongoOk ? getResolvedMongoDbName() : null,
     groqConfigured: groq.ok,
     groqIssue: groq.ok ? null : groq.issue,
+    razorpayConfigured: razorpayOk,
     authSecretWeak:
       typeof process.env.AUTH_SECRET === "string" &&
       process.env.AUTH_SECRET.length > 0 &&

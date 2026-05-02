@@ -1,5 +1,6 @@
 "use client";
 
+import { AnalysisLoadingOverlay } from "@/components/AnalysisLoadingOverlay";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -26,6 +27,7 @@ export default function NewAnalysisPage() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [runStartedAt, setRunStartedAt] = useState<number | undefined>(undefined);
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -43,6 +45,7 @@ export default function NewAnalysisPage() {
     }
 
     setLoading(true);
+    setRunStartedAt(Date.now());
     setProgress("Preparing transcript…");
 
     try {
@@ -83,7 +86,7 @@ export default function NewAnalysisPage() {
 
       const data = await res.json();
       if (res.status === 402) {
-        setError(data?.error?.message ?? "Monthly free analyses used. Add credits or upgrade.");
+        setError(data?.error?.message ?? "Free analysis used for this month. Upgrade with Razorpay on the Pricing page.");
         return;
       }
       if (res.status === 503 || data?.error?.code === "MISCONFIGURED") {
@@ -102,11 +105,13 @@ export default function NewAnalysisPage() {
     } finally {
       setLoading(false);
       setProgress(null);
+      setRunStartedAt(undefined);
     }
   }
 
   return (
     <>
+      <AnalysisLoadingOverlay open={loading} startedAt={runStartedAt} />
       <div className="bg-mesh" />
       <div className="bg-grid" />
       <div className="orb orb-1" style={{ opacity: 0.4 }} />
@@ -276,7 +281,7 @@ export default function NewAnalysisPage() {
               </div>
             )}
             <p className="text-xs text-center text-[var(--muted)]">
-              Takes 20–60 seconds · Uses 1 free analysis or 1 credit
+              Takes 20–60 seconds · Uses your 1 free analysis / month or Premium unlimited
             </p>
           </div>
         </form>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUserDoc, unauthorized } from "@/lib/api-helpers";
 import { resolveGroqApiKey } from "@/lib/groq-config";
 import { getResolvedMongoDbName } from "@/lib/mongodb";
+import { isRazorpayKeysConfigured } from "@/lib/razorpay-config";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +15,7 @@ export async function GET() {
 
   const groq = resolveGroqApiKey();
   const mongoOk = typeof process.env.MONGODB_URI === "string" && process.env.MONGODB_URI.length > 0;
-  const razorpayOk =
-    typeof process.env.RAZORPAY_KEY_ID === "string" &&
-    process.env.RAZORPAY_KEY_ID.length > 0 &&
-    typeof process.env.RAZORPAY_KEY_SECRET === "string" &&
-    process.env.RAZORPAY_KEY_SECRET.length > 0 &&
-    typeof process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID === "string" &&
-    process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID.length > 0;
+  const razorpayOk = isRazorpayKeysConfigured();
 
   return NextResponse.json({
     mongoConfigured: mongoOk,

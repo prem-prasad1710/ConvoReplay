@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { getSessionUserDoc, unauthorized, misconfigured, serverError } from "@/lib/api-helpers";
+import { getRazorpayKeyId, getRazorpayKeySecret } from "@/lib/razorpay-config";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +24,11 @@ export async function POST() {
     const user = await getSessionUserDoc();
     if (!user) return unauthorized();
 
-    const keyId = process.env.RAZORPAY_KEY_ID?.trim();
-    const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
+    const keyId = getRazorpayKeyId();
+    const keySecret = getRazorpayKeySecret();
     if (!keyId || !keySecret) {
       return misconfigured(
-        "Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in Vercel → Settings → Environment Variables (Production), then redeploy. Same keys as Razorpay Dashboard → API Keys."
+        "Add RAZORPAY_KEY_SECRET and your Razorpay Key Id: set RAZORPAY_KEY_ID or NEXT_PUBLIC_RAZORPAY_KEY_ID (same rzp_… value from Dashboard → API Keys) in Vercel Production, then redeploy."
       );
     }
 

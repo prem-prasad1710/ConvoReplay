@@ -169,8 +169,9 @@ export default function DashboardPage() {
             ) : null}
             {envStatus.razorpayConfigured === false ? (
               <div className="glass rounded-xl border border-[var(--warn)]/35 px-5 py-3 text-sm text-[var(--warn)]">
-                Razorpay is not configured — add RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and NEXT_PUBLIC_RAZORPAY_KEY_ID to enable
-                paid upgrades. See Setup &amp; help.
+                Razorpay is not configured — add <span className="font-mono">RAZORPAY_KEY_SECRET</span> and your Key Id as{" "}
+                <span className="font-mono">RAZORPAY_KEY_ID</span> or <span className="font-mono">NEXT_PUBLIC_RAZORPAY_KEY_ID</span>{" "}
+                (same <span className="font-mono">rzp_…</span> value). See Setup &amp; help.
               </div>
             ) : null}
           </div>
